@@ -1,0 +1,1730 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>[더 외간] 통합 스마트 관리기</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        waegan: {
+                            dark: '#1b4332',
+                            medium: '#2d6a4f',
+                            accent: '#40916c',
+                            light: '#d8f3dc',
+                            cream: '#faf7f0',
+                            white: '#ffffff'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #faf7f0;
+        }
+        .poppins {
+            font-family: 'Poppins', sans-serif;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2d6a4f;
+            border-radius: 10px;
+        }
+        input:focus, select:focus {
+            outline: 2px solid #2d6a4f !important;
+            outline-offset: 0px;
+        }
+        /* PRINT STYLING - Absolute containment with direct body-child targeting to solve blank page issue */
+        @media print {
+            body > *:not(#print-report-area) {
+                display: none !important;
+            }
+            #print-report-area {
+                display: block !important;
+                visibility: visible !important;
+                position: absolute !important;
+                left: 0 !important;
+                top: 0 !important;
+                width: 100% !important;
+                background: white !important;
+                color: black !important;
+                padding: 40px !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            #print-report-area * {
+                visibility: visible !important;
+                color: black !important;
+            }
+            #print-report-area table {
+                border-collapse: collapse !important;
+                width: 100% !important;
+                margin-top: 20px !important;
+            }
+            #print-report-area th, #print-report-area td {
+                border: 1px solid #333333 !important;
+                padding: 10px !important;
+            }
+        }
+    </style>
+</head>
+<body class="p-3 md:p-8 text-slate-800">
+
+    <!-- Top Header Brand -->
+    <div class="max-w-7xl mx-auto mb-6 bg-white p-5 md:p-6 rounded-2xl shadow-sm border border-emerald-100">
+        <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+            <div>
+                <span class="text-xs font-bold text-[#2d6a4f] tracking-widest poppins uppercase">THE WAEGAN SYSTEM ENGINE</span>
+                <h1 class="text-2xl md:text-3xl font-extrabold text-[#1b4332] mt-1">더 외간 통합 스마트 관리기</h1>
+                <p class="text-slate-500 text-xs md:text-sm mt-1">판매 수량 기입 시 재고가 자동으로 차감되며, 적정재고 도달 시 거래처별 맞춤 카톡/문자 발주문이 버튼 하나로 즉각 전송됩니다.</p>
+            </div>
+            
+            <!-- Tab Buttons (Navigation) - Fixed layout to prevent wrapping under any resolution -->
+            <div class="flex flex-row bg-slate-100 p-1 rounded-xl w-full lg:w-auto border border-slate-200 overflow-x-auto whitespace-nowrap scrollbar-none gap-1">
+                <button onclick="switchTab('sales')" id="tab-sales" class="flex-1 lg:flex-initial flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 bg-[#1b4332] text-white whitespace-nowrap">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> 1. 매출 마감 및 판매 입력
+                </button>
+                <button onclick="switchTab('inventory')" id="tab-inventory" class="flex-1 lg:flex-initial flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 text-slate-600 hover:text-slate-800 whitespace-nowrap">
+                    <i class="fa-solid fa-boxes-packing"></i> 2. 실재고 및 발주 관리
+                </button>
+                <button onclick="switchTab('admin')" id="tab-admin" class="flex-1 lg:flex-initial flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 text-slate-600 hover:text-slate-800 whitespace-nowrap">
+                    <i class="fa-solid fa-user-gear"></i> 3. 관리자 제어 (레시피/결산)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="max-w-7xl mx-auto">
+        
+        <!-- ========================================== -->
+        <!-- TAB 1: SALES & SALES VOLUME DEDUCTION       -->
+        <!-- ========================================== -->
+        <div id="tab-sales-content" class="space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Daily Closing Form -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4 h-fit">
+                    <div class="border-b border-slate-100 pb-3">
+                        <h2 class="text-md font-bold text-slate-800"><i class="fa-solid fa-pen-to-square mr-1.5 text-emerald-700"></i> 일일 매출 마감 및 판매 수량 입력</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">마감 직원이 당일 총매출 및 메뉴별 판매 개수를 기록하는 공간입니다.</p>
+                    </div>
+                    
+                    <form id="sales-form" onsubmit="saveSalesRecord(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">날짜</label>
+                            <input type="date" id="sales-date" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium bg-slate-50">
+                        </div>
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">당일 일일 총 매출액 (₩)</label>
+                            <input type="number" id="sales-amount" placeholder="숫자만 입력" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm poppins font-bold text-slate-800 bg-slate-50">
+                        </div>
+
+                        <!-- Menu Sales Count Form dynamically populated -->
+                        <div class="border-t border-slate-100 pt-3">
+                            <span class="text-xs font-bold text-emerald-800"><i class="fa-solid fa-calculator mr-1"></i> 당일 품목별 판매 수량 (개)</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">입력된 수량만큼 연결된 원부재료 재고가 자동으로 차감됩니다.</p>
+                        </div>
+
+                        <div id="sales-item-count-grid" class="space-y-3 max-h-[280px] overflow-y-auto pr-1">
+                            <!-- JS에서 동적 주입 -->
+                        </div>
+                        
+                        <div class="border-t border-slate-100 pt-3">
+                            <span class="text-xs font-bold text-emerald-800"><i class="fa-solid fa-ranking-star mr-1"></i> 카테고리별 최다 판매 메뉴 지정</span>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">음료 최다</label>
+                                <select id="best-beverage" class="w-full p-2 border border-slate-200 rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">브런치 최다</label>
+                                <select id="best-brunch" class="w-full p-2 border border-slate-200 rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">베이커리 최다</label>
+                                <select id="best-bakery" class="w-full p-2 border border-slate-200 rounded-lg bg-slate-50"></select>
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">디저트 최다</label>
+                                <select id="best-dessert" class="w-full p-2 border border-slate-200 rounded-lg bg-slate-50"></select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white py-3 rounded-xl font-bold text-sm transition shadow flex items-center justify-center gap-2 mt-4">
+                            <i class="fa-solid fa-floppy-disk"></i> 마감 일일 데이터 저장 (재고 차감)
+                        </button>
+                    </form>
+                </div>
+                
+                <!-- History Log Table -->
+                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm lg:col-span-2 space-y-4">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+                        <div>
+                            <h2 class="text-md font-bold text-slate-800"><i class="fa-solid fa-table-list mr-1.5 text-emerald-700"></i> 마감된 매출 기록 이력</h2>
+                            <p class="text-xs text-slate-400 mt-0.5">매장 마감 시 기록된 목록이며, 삭제 시 차감되었던 재고가 자동 원상 복구됩니다.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto max-h-[600px]">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead class="bg-slate-50 text-slate-600 font-bold sticky top-0 border-b border-slate-200">
+                                <tr>
+                                    <th class="p-3 text-center w-24 whitespace-nowrap">마감일자</th>
+                                    <th class="p-3 text-right whitespace-nowrap">당일 매출액</th>
+                                    <th class="p-3 whitespace-nowrap">음료 최다</th>
+                                    <th class="p-3 whitespace-nowrap">브런치 최다</th>
+                                    <th class="p-3 whitespace-nowrap">베이커리 최다</th>
+                                    <th class="p-3 whitespace-nowrap">디저트 최다</th>
+                                    <th class="p-3 text-center whitespace-nowrap">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sales-history-tbody" class="divide-y divide-slate-100 text-slate-700">
+                                <!-- JS에서 데이터 연동 주입 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: INVENTORY & DIRECT KAKAO ORDER      -->
+        <!-- ========================================== -->
+        <div id="tab-inventory-content" class="hidden space-y-6">
+            <!-- Filtering & Sorting controls -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-800 text-md shadow-inner">
+                        <i class="fa-solid fa-boxes-stacked"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-md font-bold text-slate-800">원부재료 실재고 현황판 및 모바일 연동 발주기</h2>
+                        <p class="text-xs text-slate-400 mt-0.5">매일 누적되는 실재고 현황판입니다. 부족 수량은 카카오톡 또는 문자로 다이렉트 전송할 수 있습니다.</p>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 w-full md:w-auto">
+                    <button onclick="filterInventory('all')" id="inv-filter-all" class="bg-[#1b4332] text-white text-xs px-3 py-2 rounded-lg font-bold transition">전체 품목보기</button>
+                    <button onclick="filterInventory('order')" id="inv-filter-order" class="bg-slate-100 text-slate-600 hover:text-slate-800 text-xs px-3 py-2 rounded-lg font-bold transition">🚨 발주 필요품목만</button>
+                </div>
+            </div>
+
+            <!-- Material Table with In-line Vendor Setup -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs md:text-sm text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 w-24 text-center whitespace-nowrap">대분류</th>
+                                <th class="p-3 whitespace-nowrap">원부재료명</th>
+                                <th class="p-3 text-center w-20 whitespace-nowrap">단위</th>
+                                <th class="p-3 text-center w-24 whitespace-nowrap">현재고</th>
+                                <th class="p-3 text-center w-24 whitespace-nowrap">적정고</th>
+                                <th class="p-3 text-center w-24 whitespace-nowrap">필요발주량</th>
+                                <th class="p-3 whitespace-nowrap">거래처 정보 및 연락처</th>
+                                <th class="p-3 text-center w-16 whitespace-nowrap">상태</th>
+                                <th class="p-3 text-center w-16 whitespace-nowrap">삭제</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-tbody" class="divide-y divide-slate-100 text-slate-700">
+                            <!-- JS에서 데이터 연동 주입 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Quick New Item Insertion Panel -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3 h-fit">
+                    <h4 class="text-xs font-bold text-slate-800"><i class="fa-solid fa-plus-circle mr-1 text-emerald-800"></i> 새로운 원부재료 품목 신규 등록</h4>
+                    <div class="space-y-2.5 text-xs">
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1">카테고리</label>
+                            <select id="new-item-category" class="w-full p-2 border border-slate-200 rounded-lg bg-slate-50">
+                                <option value="음료">음료</option>
+                                <option value="디저트">디저트</option>
+                                <option value="베이커리">베이커리</option>
+                                <option value="브런치">브런치</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block font-bold text-slate-500 mb-1">원부재료명</label>
+                            <input type="text" id="new-item-name" placeholder="예: 시그니처 외간 원두" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                        </div>
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">규격 단위</label>
+                                <input type="text" id="new-item-unit" placeholder="예: kg" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">현재고 수량</label>
+                                <input type="number" step="0.1" id="new-item-current" placeholder="0" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">적정재고 기준</label>
+                                <input type="number" step="0.1" id="new-item-safe" placeholder="0" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">거래처/담당자</label>
+                                <input type="text" id="new-item-vendor" placeholder="예: OO유통 오매니저" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                            </div>
+                            <div>
+                                <label class="block font-bold text-slate-500 mb-1">거래처 연락처</label>
+                                <input type="text" id="new-item-phone" placeholder="예: 01012345678" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="addInventoryItem()" class="w-full bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs py-2.5 rounded-lg font-bold transition shadow">
+                        <i class="fa-solid fa-plus mr-1"></i> 목록에 새 식자재 품목 등록
+                    </button>
+                </div>
+
+                <!-- KakaoTalk and Message Dynamic Dispatch Center -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4 lg:col-span-2">
+                    <div class="border-b border-slate-100 pb-3">
+                        <h4 class="text-sm font-bold text-[#1b4332]"><i class="fa-solid fa-paper-plane mr-1 text-emerald-800"></i> 거래처별 실시간 다이렉트 발주 센터</h4>
+                        <p class="text-xs text-slate-400 mt-1">부족한 원부재료가 거래처별로 자동 분류됩니다. 버튼 하나로 전송 텍스트가 조립되고 카카오톡이 연동 실행됩니다.</p>
+                    </div>
+
+                    <div id="dispatch-center-list" class="space-y-4 max-h-[350px] overflow-y-auto">
+                        <!-- JS에서 거래처별로 묶어 발주 컴포넌트 자동 주입 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: ADMIN ACCESS & CONFIGURATION        -->
+        <!-- ========================================== -->
+        <div id="tab-admin-content" class="hidden space-y-6">
+            
+            <!-- Access Lock Block -->
+            <div id="admin-lock-view" class="bg-white p-12 rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center text-center space-y-4">
+                <div class="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-600 text-2xl shadow-inner">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-slate-800 text-lg">관리자 전용 제어 콘솔 잠김</h3>
+                    <p class="text-slate-400 text-xs mt-1">월말 결산 분석 보고서, AI 다음 달 마케팅 방향, 동적 메뉴 리스트 변경 및 메뉴별 레시피 매칭은 비밀번호를 필요로 합니다.</p>
+                </div>
+                
+                <div class="flex items-center gap-2 mt-2">
+                    <input type="password" id="admin-passcode" placeholder="비밀번호 4자리" class="px-3 py-2 text-sm border border-slate-200 rounded-xl w-48 poppins text-center">
+                    <button onclick="unlockAdminPanel()" class="bg-[#1b4332] hover:bg-[#2d6a4f] text-white px-5 py-2 rounded-xl text-sm font-bold transition shadow">
+                        인증 및 해제
+                    </button>
+                </div>
+            </div>
+
+            <!-- Unlocked Admin Dashboard Area -->
+            <div id="admin-unlocked-view" class="hidden space-y-6">
+                <!-- Header with Lock again -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex justify-between items-center">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-emerald-600 animate-pulse"></span>
+                        <div>
+                            <h3 class="font-bold text-slate-800 text-md"><i class="fa-solid fa-chart-line mr-1 text-emerald-700"></i> 월말/연말 통합 결산 보고 및 레시피 제어실</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">매장의 주요 매출 동향과 레시피 소모 체계를 통제합니다.</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="printReport()" class="text-xs text-slate-700 hover:text-slate-900 font-bold border border-slate-300 px-3 py-2 rounded-lg hover:bg-slate-50 transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-print"></i> 결산서 프린터 인쇄 / PDF 출력
+                        </button>
+                        <button onclick="lockAdminPanel()" class="text-xs text-rose-600 hover:text-rose-800 font-bold border border-rose-200 px-3 py-2 rounded-lg hover:bg-rose-50 transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-lock"></i> 안전 잠금 상태 전환
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Aggregates Dashboard Card -->
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                        <span class="text-xs text-slate-500 font-bold">누적 전체 총매출액</span>
+                        <div id="summary-total-sales" class="text-2xl font-bold text-slate-800 mt-1 poppins">₩0</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                        <span class="text-xs text-slate-500 font-bold">기록 및 마감된 일수</span>
+                        <div id="summary-total-days" class="text-2xl font-bold text-slate-800 mt-1 poppins">0 일</div>
+                    </div>
+                    <div class="bg-white p-5 rounded-2xl border border-slate-200 text-center shadow-sm">
+                        <span class="text-xs text-slate-500 font-bold">일일 평균 매출액</span>
+                        <div id="summary-average-sales" class="text-2xl font-bold text-[#1b4332] mt-1 poppins">₩0</div>
+                    </div>
+                    <div class="bg-[#1b4332] p-5 rounded-2xl text-center text-white shadow-sm">
+                        <span class="text-xs text-emerald-200 font-bold">이번 달 예상 총매출</span>
+                        <div id="summary-expected-sales" class="text-2xl font-bold text-[#d8f3dc] mt-1 poppins">₩0</div>
+                    </div>
+                </div>
+
+                <!-- API Key Configuration Section -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <h4 class="text-xs font-bold text-slate-800"><i class="fa-solid fa-key mr-1.5 text-emerald-800"></i> 구글 Gemini API 연동 키 설정</h4>
+                    <div class="flex flex-col md:flex-row gap-2.5">
+                        <input type="password" id="admin-gemini-key" placeholder="AI 마케팅 요약에 사용할 Gemini API 키를 입력하세요" class="flex-grow p-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50">
+                        <button onclick="saveApiKey()" class="bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs px-4 py-2.5 rounded-xl font-bold transition shadow-sm">
+                            API 키 저장
+                        </button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 mt-0.5">
+                        * 입력하신 API 키는 안전하게 사장님의 기기 브라우저(LocalStorage)에만 보존됩니다. 
+                        <a href="https://aistudio.google.com/" target="_blank" class="text-emerald-700 underline font-bold">여기(Google AI Studio)</a>에서 무료로 키를 발급받으실 수 있습니다.
+                    </p>
+                </div>
+
+                <!-- AI NEXT MONTH PROPOSAL HUB -->
+                <div class="bg-white p-6 rounded-2xl border border-emerald-100 shadow-sm space-y-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-100 pb-3">
+                        <div>
+                            <h4 class="text-sm font-bold text-emerald-950"><i class="fa-solid fa-brain mr-1.5 text-emerald-700"></i> AI 스마트 결산 분석 &amp; 마케팅 방향 제안</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">이번 달 매출 데이터와 최다 판매 메뉴를 분석하여 다음 달의 숏폼 및 오프라인 마케팅 계획을 자동 도출합니다.</p>
+                        </div>
+                        <button onclick="generateAIMarketingProposal()" class="bg-[#1b4332] hover:bg-[#2d6a4f] text-white text-xs px-4 py-2.5 rounded-lg font-bold flex items-center gap-2 transition shadow-sm">
+                            <i class="fa-solid fa-robot animate-pulse"></i> AI 마케팅 제안서 생성
+                        </button>
+                    </div>
+
+                    <div id="ai-marketing-box" class="hidden bg-emerald-50/50 border border-emerald-100/60 p-4 rounded-xl">
+                        <div id="ai-marketing-result" class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
+                            <!-- AI Generated contents inject here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Menu list & Recipe setup Grid -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <!-- Menu Control List -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-3 flex justify-between items-center">
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-mug-hot mr-1.5 text-emerald-700"></i> 매장 판매 메뉴 리스트 제어</h3>
+                                <p class="text-xs text-slate-400 mt-0.5">매장의 카테고리별 동적 판매 메뉴 목록입니다. 추가 및 삭제가 실시간 반영됩니다.</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <!-- New Menu Item Add Form -->
+                            <div class="grid grid-cols-3 gap-2 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+                                <select id="new-menu-category" class="p-2 border border-slate-200 rounded-lg bg-white">
+                                    <option value="beverage">음료</option>
+                                    <option value="brunch">브런치</option>
+                                    <option value="bakery">베이커리</option>
+                                    <option value="dessert">디저트</option>
+                                </select>
+                                <input type="text" id="new-menu-name" placeholder="신규 메뉴명" class="p-2 border border-slate-200 rounded-lg col-span-2 bg-white">
+                                <button onclick="addMenuItem()" class="w-full col-span-3 bg-emerald-700 hover:bg-emerald-800 text-white p-2 rounded-lg font-bold">
+                                    + 판매 메뉴 추가등록
+                                </button>
+                            </div>
+
+                            <!-- List of Menus dynamically rendered -->
+                            <div class="max-h-[320px] overflow-y-auto divide-y divide-slate-100 border border-slate-100 rounded-xl" id="menu-items-crud-list">
+                                <!-- JS에서 데이터 연산 후 동적 렌더링 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recipe Mapping Configurator -->
+                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+                        <div class="border-b border-slate-100 pb-3">
+                            <h3 class="text-sm font-bold text-slate-800"><i class="fa-solid fa-mortar-pestle mr-1.5 text-emerald-700"></i> 메뉴별 소모 레시피(Recipe) 맵 정의</h3>
+                            <p class="text-xs text-slate-400 mt-0.5">선택한 메뉴가 1개 판매될 때, 어떤 원부재료가 얼만큼 차감될지 정밀 지정합니다.</p>
+                        </div>
+
+                        <div class="space-y-4 text-xs">
+                            <!-- Menu Selector for Recipe mapping -->
+                            <div class="flex gap-2">
+                                <div class="w-1/2">
+                                    <label class="block font-bold text-slate-500 mb-1">대상 메뉴 선택</label>
+                                    <select id="recipe-target-menu" onchange="loadRecipeConfig(this.value)" class="w-full p-2.5 border border-slate-200 rounded-xl bg-slate-50 poppins font-bold text-slate-700"></select>
+                                </div>
+                                <div class="w-1/2 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100">
+                                    <span class="block font-bold text-emerald-800">이 컵/그릇당 소모 원료 수</span>
+                                    <span id="recipe-ingredient-count-label" class="text-sm font-extrabold poppins text-slate-700 mt-1 block">0개 지정됨</span>
+                                </div>
+                            </div>
+
+                            <div class="border-t border-slate-100 pt-3">
+                                <span class="font-bold text-slate-700">원료 레시피 등록 / 수정</span>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                <div class="col-span-2">
+                                    <label class="block text-slate-400 mb-0.5 text-[10px]">소모될 원료 재료</label>
+                                    <select id="recipe-add-material" class="w-full p-2 border border-slate-200 rounded-lg bg-white"></select>
+                                </div>
+                                <div>
+                                    <label class="block text-slate-400 mb-0.5 text-[10px]">소모 수량</label>
+                                    <input type="number" step="0.001" id="recipe-add-qty" placeholder="소모량" class="w-full p-2 border border-slate-200 rounded-lg bg-white">
+                                </div>
+                                <button onclick="saveRecipeMapping()" class="w-full col-span-3 bg-[#1b4332] hover:bg-[#2d6a4f] text-white p-2 rounded-lg font-bold">
+                                    이 레시피 매칭 저장하기
+                                </button>
+                            </div>
+
+                            <!-- List of mapped ingredients of target menu -->
+                            <div class="space-y-1.5" id="recipe-items-list-box">
+                                <!-- Mapped ingredients here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PRINT OUT MOCKUP (Placed at direct Body child to prevent CSS container display:none inheritance) -->
+    <div id="print-report-area" class="hidden bg-white p-10 border border-slate-300 max-w-4xl mx-auto space-y-6 text-slate-900">
+        <div class="text-center space-y-2 border-b-2 border-slate-800 pb-5">
+            <h2 class="text-2xl font-extrabold tracking-widest text-slate-900 poppins">[더 외간] 월간 통합 결산 보고서</h2>
+            <p class="text-xs text-slate-500">인쇄 시간 기준: <span id="print-date" class="poppins"></span></p>
+        </div>
+        <div class="grid grid-cols-2 gap-6 text-xs py-4 border-b border-slate-200">
+            <div>
+                <p class="font-bold">발행처: 더 외간 글로벌 비즈니스 엔진</p>
+                <p>담당자: 매장 관리 매니저</p>
+            </div>
+            <div class="text-right">
+                <p>누적 마감 일수: <span id="print-days"></span></p>
+                <p class="font-bold text-lg">누적 총 매출: <span id="print-total"></span></p>
+            </div>
+        </div>
+        <div class="space-y-3">
+            <h4 class="font-bold text-sm">■ 카테고리별 누적 최다 판매 메뉴 랭킹</h4>
+            <table class="w-full text-xs border border-slate-300 text-left border-collapse">
+                <thead class="bg-slate-100">
+                    <tr>
+                        <th class="p-2 border">카테고리</th>
+                        <th class="p-2 border">최다 판매 메뉴명</th>
+                        <th class="p-2 border">마감 등록 빈도수</th>
+                    </tr>
+                </thead>
+                <tbody id="print-table-body">
+                    <!-- JS에서 주입 -->
+                </tbody>
+            </table>
+        </div>
+        <div class="text-center pt-10 text-xs text-slate-400">
+            위 대시보드는 더 외간 자율 ERP에 의거하여 자동 컴파일링 되었습니다. (대표자 검인 서명 생략)
+        </div>
+    </div>
+
+    <!-- Custom Modal Confirm system (replaces native confirm()) -->
+    <div id="confirm-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white p-6 rounded-2xl max-w-sm w-full mx-4 shadow-2xl space-y-4 transform scale-95 transition-transform duration-200" id="confirm-modal-box">
+            <div class="flex items-center gap-3">
+                <span class="text-amber-500 text-2xl"><i class="fa-solid fa-circle-question"></i></span>
+                <h3 class="font-bold text-slate-800 text-sm" id="confirm-title">확인</h3>
+            </div>
+            <p class="text-xs text-slate-500 leading-relaxed" id="confirm-message">진행하시겠습니까?</p>
+            <div class="flex justify-end gap-2 text-xs">
+                <button onclick="closeConfirmModal(false)" class="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-lg font-bold transition">취소</button>
+                <button onclick="closeConfirmModal(true)" class="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold transition" id="confirm-yes-btn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Popups System -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <span class="text-emerald-400 text-xl" id="toast-icon"><i class="fa-solid fa-circle-check"></i></span>
+        <div>
+            <h4 class="font-bold text-xs" id="toast-title">성공</h4>
+            <p class="text-xs text-slate-400 mt-0.5" id="toast-message">메시지 내용</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Databases (Stored in LocalStorage) ---
+        let salesRecords = [];
+        let inventoryItems = [];
+        let menuCategories = {};
+        let recipes = {}; // { '들기름 파스타': [ { ingredientId: 1, qty: 0.1 } ] }
+        
+        let isAdminUnlocked = false;
+        let currentInventoryFilter = 'all';
+        let confirmPromiseResolver = null;
+
+        // Default Menus Seed Data
+        const defaultMenuCategories = {
+            beverage: ['외간 시그니처 쑥라떼', '아메리카노', '돌체 크림 라떼', '제주 한라봉 에이드', '전통 대추생강차'],
+            brunch: ['들기름 파스타', '감자 샌드위치', '토마토 바질 바게트'],
+            bakery: ['시나몬 크로플', '수제 버터 스콘', '소금빵', '전통 단팥빵'],
+            dessert: ['전통 약과 브라우니', '곶감 치즈 테린느', '인절미 갸또 케이크']
+        };
+
+        // Default Raw Materials Seed Data (Vendor info matched inside)
+        const defaultInventory = [
+            { id: 1, category: '음료', name: '시그니처 외간 원두', unit: 'kg', current: 1.5, safe: 3.0, ordered: false, vendor: '외간커피유통 오매니저', vendorPhone: '01055556666' },
+            { id: 2, category: '음료', name: '매장 바리스타 우유', unit: 'L', current: 24.0, safe: 10.0, ordered: false, vendor: '푸른유제품 대리점', vendorPhone: '01022223333' },
+            { id: 3, category: '음료', name: '전통 쑥 파우더', unit: 'kg', current: 0.8, safe: 2.0, ordered: false, vendor: '전라도전통푸드 김대표', vendorPhone: '01077778888' },
+            { id: 4, category: '디저트', name: '전통 약과 타르트 원물', unit: '개', current: 4, safe: 15, ordered: false, vendor: '명가약과팩토리 본사', vendorPhone: '01099990000' },
+            { id: 5, category: '디저트', name: '치즈 수제 테린느 베이스', unit: 'kg', current: 3.2, safe: 2.0, ordered: false, vendor: '푸른유제품 대리점', vendorPhone: '01022223333' },
+            { id: 6, category: '베이커리', name: '소금빵 생지', unit: '개', current: 15, safe: 50, ordered: false, vendor: '더생지푸드 남대리', vendorPhone: '01033334444' },
+            { id: 7, category: '베이커리', name: '버터 스콘 밀가루', unit: 'kg', current: 12.0, safe: 10.0, ordered: false, vendor: '더생지푸드 남대리', vendorPhone: '01033334444' },
+            { id: 8, category: '브런치', name: '강원도 감자 원물', unit: 'kg', current: 2.5, safe: 5.0, ordered: false, vendor: '거제면야채청과 김사장', vendorPhone: '01088881111' },
+            { id: 9, category: '브런치', name: '방앗간 가공 들기름', unit: 'L', current: 1.2, safe: 2.0, ordered: false, vendor: '거제면야채청과 김사장', vendorPhone: '01088881111' },
+            { id: 10, category: '브런치', name: '이탈리안 링귀니 파스타면', unit: 'kg', current: 8.0, safe: 5.0, ordered: false, vendor: '명가약과팩토리 본사', vendorPhone: '01099990000' },
+        ];
+
+        // Default Recipes Seed Data
+        const defaultRecipes = {
+            '외간 시그니처 쑥라떼': [
+                { ingredientId: 3, qty: 0.05 }, // 쑥 가루 50g 소모
+                { ingredientId: 2, qty: 0.2 }   // 우유 200ml 소모
+            ],
+            '아메리카노': [
+                { ingredientId: 1, qty: 0.02 }  // 원두 20g 소모
+            ],
+            '돌체 크림 라떼': [
+                { ingredientId: 1, qty: 0.02 },
+                { ingredientId: 2, qty: 0.15 }
+            ],
+            '들기름 파스타': [
+                { ingredientId: 10, qty: 0.12 }, // 파스타면 120g
+                { ingredientId: 9, qty: 0.03 }   // 들기름 30ml
+            ],
+            '감자 샌드위치': [
+                { ingredientId: 8, qty: 0.15 }   // 감자 150g
+            ],
+            '소금빵': [
+                { ingredientId: 6, qty: 1 }      // 생지 1개
+            ],
+            '수제 버터 스콘': [
+                { ingredientId: 7, qty: 0.08 }   // 밀가루 80g
+            ],
+            '전통 약과 브라우니': [
+                { ingredientId: 4, qty: 1 }      // 약과 1개
+            ],
+            '곶감 치즈 테린느': [
+                { ingredientId: 5, qty: 0.1 }    // 치즈베이스 100g
+            ]
+        };
+
+        // --- Core Init ---
+        window.onload = function() {
+            // Load or Initialize Menus
+            const localMenus = localStorage.getItem('waegan_menus');
+            if (localMenus) {
+                menuCategories = JSON.parse(localMenus);
+            } else {
+                menuCategories = {...defaultMenuCategories};
+                localStorage.setItem('waegan_menus', JSON.stringify(menuCategories));
+            }
+
+            // Load or Initialize Inventory
+            const localInventory = localStorage.getItem('waegan_inventory');
+            if (localInventory) {
+                inventoryItems = JSON.parse(localInventory);
+            } else {
+                inventoryItems = [...defaultInventory];
+                localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+            }
+
+            // Load or Initialize Recipes
+            const localRecipes = localStorage.getItem('waegan_recipes');
+            if (localRecipes) {
+                recipes = JSON.parse(localRecipes);
+            } else {
+                recipes = {...defaultRecipes};
+                localStorage.setItem('waegan_recipes', JSON.stringify(recipes));
+            }
+
+            // Load or Initialize Sales History
+            const localSales = localStorage.getItem('waegan_sales_history');
+            if (localSales) {
+                salesRecords = JSON.parse(localSales);
+            } else {
+                const defaultHist = [
+                    { date: '2026-07-06', amount: 1450000, beverage: '외간 시그니처 쑥라떼', brunch: '들기름 파스타', bakery: '소금빵', dessert: '전통 약과 브라우니', itemSales: { '외간 시그니처 쑥라떼': 20, '아메리카노': 35, '들기름 파스타': 12, '소금빵': 15 } },
+                    { date: '2026-07-05', amount: 1890000, beverage: '돌체 크림 라떼', brunch: '들기름 파스타', bakery: '시나몬 크로플', dessert: '전통 약과 브라우니', itemSales: { '돌체 크림 라떼': 25, '아메리카노': 45, '들기름 파스타': 18, '시나몬 크로플': 10 } }
+                ];
+                salesRecords = defaultHist;
+                localStorage.setItem('waegan_sales_history', JSON.stringify(salesRecords));
+            }
+
+            // Date picker to today
+            const todayStr = new Date().toISOString().split('T')[0];
+            document.getElementById('sales-date').value = todayStr;
+
+            // Render Entire Program
+            renderAll();
+        };
+
+        // --- Master Render Coordinator ---
+        function renderAll() {
+            renderSalesFormAndHistory();
+            renderInventory();
+            renderDispatchCenter();
+            renderAdminPanel();
+        }
+
+        // --- 1. TOAST NOTIFICATIONS ---
+        function triggerToast(title, msg, success = true) {
+            const toast = document.getElementById('toast');
+            const toastTitle = document.getElementById('toast-title');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+            
+            toastTitle.innerText = title;
+            toastMsg.innerText = msg;
+            
+            if (success) {
+                toast.className = "fixed bottom-5 right-5 bg-slate-900 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-0 opacity-100 transition-all duration-300 z-50";
+                toastIcon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400 text-xl"></i>`;
+            } else {
+                toast.className = "fixed bottom-5 right-5 bg-rose-950 text-white px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 transform translate-y-0 opacity-100 transition-all duration-300 z-50 border border-rose-800";
+                toastIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-500 text-xl"></i>`;
+            }
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+
+        // --- 2. CUSTOM CONFIRM SYSTEM ---
+        function triggerConfirm(title, msg) {
+            document.getElementById('confirm-title').innerText = title;
+            document.getElementById('confirm-message').innerText = msg;
+            
+            const modal = document.getElementById('confirm-modal');
+            const modalBox = document.getElementById('confirm-modal-box');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modalBox.classList.remove('scale-95');
+            }, 50);
+
+            return new Promise((resolve) => {
+                confirmPromiseResolver = resolve;
+            });
+        }
+
+        function closeConfirmModal(result) {
+            const modal = document.getElementById('confirm-modal');
+            const modalBox = document.getElementById('confirm-modal-box');
+            
+            modal.classList.add('opacity-0');
+            modalBox.classList.add('scale-95');
+            
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                if (confirmPromiseResolver) {
+                    confirmPromiseResolver(result);
+                    confirmPromiseResolver = null;
+                }
+            }, 200);
+        }
+
+        // --- 3. SWITCH TAB NAVIGATION ---
+        function switchTab(tabName) {
+            const tabSalesBtn = document.getElementById('tab-sales');
+            const tabInventoryBtn = document.getElementById('tab-inventory');
+            const tabAdminBtn = document.getElementById('tab-admin');
+            
+            const salesContent = document.getElementById('tab-sales-content');
+            const inventoryContent = document.getElementById('tab-inventory-content');
+            const adminContent = document.getElementById('tab-admin-content');
+
+            salesContent.classList.add('hidden');
+            inventoryContent.classList.add('hidden');
+            adminContent.classList.add('hidden');
+
+            tabSalesBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 text-slate-600 hover:text-slate-800 whitespace-nowrap";
+            tabInventoryBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 text-slate-600 hover:text-slate-800 whitespace-nowrap";
+            tabAdminBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 text-slate-600 hover:text-slate-800 whitespace-nowrap";
+
+            if (tabName === 'sales') {
+                salesContent.classList.remove('hidden');
+                tabSalesBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 bg-[#1b4332] text-white whitespace-nowrap";
+                renderSalesFormAndHistory();
+            } else if (tabName === 'inventory') {
+                inventoryContent.classList.remove('hidden');
+                tabInventoryBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 bg-[#1b4332] text-white whitespace-nowrap";
+                renderInventory();
+                renderDispatchCenter();
+            } else {
+                adminContent.classList.remove('hidden');
+                tabAdminBtn.className = "flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-xs md:text-sm font-bold transition-all duration-200 bg-[#1b4332] text-white whitespace-nowrap";
+                renderAdminPanel();
+            }
+        }
+
+        // --- 4. SALES TAB ENGINE (Tab 1) ---
+        function renderSalesFormAndHistory() {
+            const beverageSel = document.getElementById('best-beverage');
+            const brunchSel = document.getElementById('best-brunch');
+            const bakerySel = document.getElementById('best-bakery');
+            const dessertSel = document.getElementById('best-dessert');
+
+            const makeOptions = (arr) => {
+                let html = '<option value="-">- 선택 없음 -</option>';
+                arr.forEach(item => {
+                    html += `<option value="${item}">${item}</option>`;
+                });
+                return html;
+            };
+
+            beverageSel.innerHTML = makeOptions(menuCategories.beverage);
+            brunchSel.innerHTML = makeOptions(menuCategories.brunch);
+            bakerySel.innerHTML = makeOptions(menuCategories.bakery);
+            dessertSel.innerHTML = makeOptions(menuCategories.dessert);
+
+            const salesQtyGrid = document.getElementById('sales-item-count-grid');
+            salesQtyGrid.innerHTML = '';
+
+            const allMenus = [
+                ...menuCategories.beverage.map(n => ({name: n, cat: '음료'})),
+                ...menuCategories.brunch.map(n => ({name: n, cat: '브런치'})),
+                ...menuCategories.bakery.map(n => ({name: n, cat: '베이커리'})),
+                ...menuCategories.dessert.map(n => ({name: n, cat: '디저트'}))
+            ];
+
+            allMenus.forEach(menu => {
+                const hasRecipe = recipes[menu.name] && recipes[menu.name].length > 0;
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-slate-50 p-2 rounded-xl border border-slate-100 text-xs";
+                div.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold whitespace-nowrap ${
+                            menu.cat === '음료' ? 'bg-amber-100 text-amber-800' :
+                            menu.cat === '디저트' ? 'bg-purple-100 text-purple-800' :
+                            menu.cat === '베이커리' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                        }">${menu.cat}</span>
+                        <span class="font-bold text-slate-700">${menu.name}</span>
+                        ${hasRecipe ? '<span class="text-[9px] text-[#2d6a4f] font-bold bg-emerald-50 px-1 rounded whitespace-nowrap">레시피 연동</span>' : '<span class="text-[9px] text-slate-400 bg-slate-100 px-1 rounded whitespace-nowrap">레시피 미매핑</span>'}
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <input type="number" data-menu="${menu.name}" placeholder="0" class="menu-sales-qty-input w-16 p-1 border border-slate-200 rounded text-center poppins font-bold bg-white">
+                        <span>개</span>
+                    </div>
+                `;
+                salesQtyGrid.appendChild(div);
+            });
+
+            const tbody = document.getElementById('sales-history-tbody');
+            tbody.innerHTML = '';
+            salesRecords.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            salesRecords.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition-colors";
+                tr.innerHTML = `
+                    <td class="p-3 text-center poppins font-bold text-slate-600 whitespace-nowrap">${record.date}</td>
+                    <td class="p-3 text-right font-bold text-slate-800 poppins whitespace-nowrap">₩${record.amount.toLocaleString()}</td>
+                    <td class="p-3 font-medium text-emerald-800 whitespace-nowrap">${record.beverage || '-'}</td>
+                    <td class="p-3 font-medium text-slate-700 whitespace-nowrap">${record.brunch || '-'}</td>
+                    <td class="p-3 font-medium text-slate-700 whitespace-nowrap">${record.bakery || '-'}</td>
+                    <td class="p-3 font-medium text-slate-700 whitespace-nowrap">${record.dessert || '-'}</td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <button onclick="deleteSalesRecord(${index})" class="text-rose-600 hover:text-rose-800 text-sm p-1 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function saveSalesRecord(e) {
+            e.preventDefault();
+            const date = document.getElementById('sales-date').value;
+            const amount = parseInt(document.getElementById('sales-amount').value);
+            const beverage = document.getElementById('best-beverage').value;
+            const brunch = document.getElementById('best-brunch').value;
+            const bakery = document.getElementById('best-bakery').value;
+            const dessert = document.getElementById('best-dessert').value;
+
+            if (isNaN(amount) || amount < 0) {
+                triggerToast("입력 오류", "정확한 총매출액을 숫자로 입력하세요.", false);
+                return;
+            }
+
+            const qtyInputs = document.getElementsByClassName('menu-sales-qty-input');
+            const itemSales = {};
+            let hasDeductions = false;
+
+            for (let input of qtyInputs) {
+                const menuName = input.getAttribute('data-menu');
+                const qtyVal = parseInt(input.value);
+                if (!isNaN(qtyVal) && qtyVal > 0) {
+                    itemSales[menuName] = qtyVal;
+                    hasDeductions = true;
+                }
+            }
+
+            if (hasDeductions) {
+                for (let menuName in itemSales) {
+                    const soldQty = itemSales[menuName];
+                    const recipeArr = recipes[menuName];
+                    if (recipeArr && recipeArr.length > 0) {
+                        recipeArr.forEach(rec => {
+                            const invIndex = inventoryItems.findIndex(i => i.id === rec.ingredientId);
+                            if (invIndex > -1) {
+                                inventoryItems[invIndex].current = Math.max(0, parseFloat((inventoryItems[invIndex].current - (rec.qty * soldQty)).toFixed(3)));
+                            }
+                        });
+                    }
+                }
+                localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+            }
+
+            const duplicateIndex = salesRecords.findIndex(r => r.date === date);
+            if (duplicateIndex > -1) {
+                salesRecords[duplicateIndex] = { date, amount, beverage, brunch, bakery, dessert, itemSales };
+                triggerToast("마감 업데이트 완료", `${date} 매출이 업데이트되었고 연동 재고가 재연산되었습니다.`);
+            } else {
+                salesRecords.push({ date, amount, beverage, brunch, bakery, dessert, itemSales });
+                triggerToast("마감 마스터 저장 완료", `${date} 일일 데이터가 저장되었고 실재고가 자동 차감되었습니다.`);
+            }
+
+            localStorage.setItem('waegan_sales_history', JSON.stringify(salesRecords));
+            renderAll();
+
+            document.getElementById('sales-amount').value = '';
+            for (let input of qtyInputs) {
+                input.value = '';
+            }
+        }
+
+        async function deleteSalesRecord(index) {
+            const result = await triggerConfirm("마감 기록 삭제", "이 기록을 완전히 제거하시겠습니까? 삭제 시 당일 소모되었던 레시피 원재료 재고량이 자동으로 다시 롤백(복구)됩니다.");
+            if (result) {
+                const targetRecord = salesRecords[index];
+                
+                if (targetRecord.itemSales) {
+                    for (let menuName in targetRecord.itemSales) {
+                        const soldQty = targetRecord.itemSales[menuName];
+                        const recipeArr = recipes[menuName];
+                        if (recipeArr && recipeArr.length > 0) {
+                            recipeArr.forEach(rec => {
+                                const invIndex = inventoryItems.findIndex(i => i.id === rec.ingredientId);
+                                if (invIndex > -1) {
+                                    inventoryItems[invIndex].current = parseFloat((inventoryItems[invIndex].current + (rec.qty * soldQty)).toFixed(3));
+                                }
+                            });
+                        }
+                    }
+                    localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+                }
+
+                salesRecords.splice(index, 1);
+                localStorage.setItem('waegan_sales_history', JSON.stringify(salesRecords));
+                triggerToast("마감 롤백 완료", "일일 이력이 삭제되었으며 식재고가 이전 상태로 원상 복구되었습니다.", false);
+                renderAll();
+            }
+        }
+
+        // --- 5. INVENTORY & VENDOR DIRECT DISPATCH ENGINE (Tab 2) ---
+        function renderInventory() {
+            const tbody = document.getElementById('inventory-tbody');
+            tbody.innerHTML = '';
+
+            let filtered = [...inventoryItems];
+            if (currentInventoryFilter === 'order') {
+                filtered = inventoryItems.filter(item => item.current <= item.safe);
+            }
+
+            filtered.forEach(item => {
+                const tr = document.createElement('tr');
+                const isUnderStock = item.current <= item.safe;
+                const orderNeededQty = isUnderStock ? (item.safe - item.current).toFixed(2) : 0;
+                
+                tr.className = `hover:bg-slate-50 transition-colors ${isUnderStock ? 'bg-rose-50/20' : ''}`;
+                tr.innerHTML = `
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <span class="px-2 py-1 rounded text-[10px] font-bold ${
+                            item.category === '음료' ? 'bg-amber-100 text-amber-800' :
+                            item.category === '디저트' ? 'bg-purple-100 text-purple-800' :
+                            item.category === '베이커리' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                        }">${item.category}</span>
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                        <input type="text" value="${item.name}" onchange="updateItemField(${item.id}, 'name', this.value)" class="w-full bg-transparent font-bold text-slate-800 border-b border-transparent hover:border-slate-300 focus:border-[#1b4332] focus:bg-white px-1">
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <input type="text" value="${item.unit}" onchange="updateItemField(${item.id}, 'unit', this.value)" class="w-12 bg-transparent text-slate-500 font-mono text-center border-b border-transparent hover:border-slate-300 focus:border-[#1b4332] focus:bg-white">
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <input type="number" step="0.01" value="${item.current}" onchange="updateItemField(${item.id}, 'current', this.value)" class="w-20 px-2 py-1 border border-slate-200 rounded text-center poppins font-bold bg-white focus:border-emerald-700">
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <input type="number" step="0.01" value="${item.safe}" onchange="updateItemField(${item.id}, 'safe', this.value)" class="w-20 px-2 py-1 border border-slate-200 rounded text-center poppins text-slate-500 bg-white focus:border-emerald-700">
+                    </td>
+                    <td class="p-3 text-center poppins font-bold whitespace-nowrap ${isUnderStock ? 'text-rose-600' : 'text-slate-400'}">
+                        ${orderNeededQty > 0 ? `+${orderNeededQty} ${item.unit}` : '-'}
+                    </td>
+                    <td class="p-3 whitespace-nowrap">
+                        <div class="flex flex-col gap-1 text-[11px]">
+                            <input type="text" value="${item.vendor || ''}" placeholder="거래처명 / 담당자" onchange="updateItemField(${item.id}, 'vendor', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-200 focus:border-[#1b4332] px-1 font-bold">
+                            <input type="text" value="${item.vendorPhone || ''}" placeholder="연락처 (숫자만)" onchange="updateItemField(${item.id}, 'vendorPhone', this.value)" class="bg-transparent border-b border-transparent hover:border-slate-200 focus:border-[#1b4332] px-1 poppins text-slate-400">
+                        </div>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <span class="whitespace-nowrap px-2 py-1 rounded-full text-[10px] font-bold ${
+                            isUnderStock ? 'bg-rose-100 text-rose-700 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                        }">
+                            ${isUnderStock ? '🚨 부족' : '정상'}
+                        </span>
+                    </td>
+                    <td class="p-3 text-center whitespace-nowrap">
+                        <button onclick="deleteInventoryItem(${item.id})" class="text-slate-400 hover:text-rose-600 transition">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function filterInventory(type) {
+            currentInventoryFilter = type;
+            const allBtn = document.getElementById('inv-filter-all');
+            const orderBtn = document.getElementById('inv-filter-order');
+
+            if (type === 'all') {
+                allBtn.className = "bg-[#1b4332] text-white text-xs px-3 py-2 rounded-lg font-bold transition";
+                orderBtn.className = "bg-slate-100 text-slate-600 hover:text-slate-800 text-xs px-3 py-2 rounded-lg font-bold transition";
+            } else {
+                allBtn.className = "bg-slate-100 text-slate-600 hover:text-slate-800 text-xs px-3 py-2 rounded-lg font-bold transition";
+                orderBtn.className = "bg-rose-600 text-white text-xs px-3 py-2 rounded-lg font-bold transition";
+            }
+            renderInventory();
+        }
+
+        function updateItemField(id, field, value) {
+            const index = inventoryItems.findIndex(item => item.id === id);
+            if (index > -1) {
+                if (field === 'current' || field === 'safe') {
+                    const parsed = parseFloat(value);
+                    inventoryItems[index][field] = isNaN(parsed) ? 0 : parsed;
+                } else {
+                    inventoryItems[index][field] = value;
+                }
+                localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+                renderInventory();
+                renderDispatchCenter();
+                triggerToast("식자재 변경 반영", `${inventoryItems[index].name}의 ${field} 데이터가 안전하게 업데이트되었습니다.`);
+            }
+        }
+
+        async function deleteInventoryItem(id) {
+            const index = inventoryItems.findIndex(item => item.id === id);
+            if (index > -1) {
+                const result = await triggerConfirm("식자재 영구삭제", `[${inventoryItems[index].name}] 품목을 완재료 리스트에서 영구적으로 제거하시겠습니까? 연결된 레시피 매칭도 모두 해제됩니다.`);
+                if (result) {
+                    const deletedName = inventoryItems[index].name;
+                    inventoryItems.splice(index, 1);
+                    localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+                    
+                    for (let mName in recipes) {
+                        recipes[mName] = recipes[mName].filter(rec => rec.ingredientId !== id);
+                    }
+                    localStorage.setItem('waegan_recipes', JSON.stringify(recipes));
+
+                    triggerToast("식자재 품목 제거완료", `${deletedName}이(가) 안전하게 데이터베이스에서 추방되었습니다.`, false);
+                    renderAll();
+                }
+            }
+        }
+
+        function addInventoryItem() {
+            const category = document.getElementById('new-item-category').value;
+            const name = document.getElementById('new-item-name').value;
+            const unit = document.getElementById('new-item-unit').value;
+            const current = parseFloat(document.getElementById('new-item-current').value);
+            const safe = parseFloat(document.getElementById('new-item-safe').value);
+            const vendor = document.getElementById('new-item-vendor').value;
+            const phone = document.getElementById('new-item-phone').value;
+
+            if (!name || !unit || isNaN(current) || isNaN(safe)) {
+                triggerToast("입력 누락 발생", "새 원재료의 이름, 단위 및 수량 규격을 확인하세요.", false);
+                return;
+            }
+
+            const newItem = {
+                id: Date.now(),
+                category,
+                name,
+                unit,
+                current,
+                safe,
+                ordered: false,
+                vendor: vendor || '미등록 거래처',
+                vendorPhone: phone || ''
+            };
+
+            inventoryItems.push(newItem);
+            localStorage.setItem('waegan_inventory', JSON.stringify(inventoryItems));
+            
+            document.getElementById('new-item-name').value = '';
+            document.getElementById('new-item-unit').value = '';
+            document.getElementById('new-item-current').value = '';
+            document.getElementById('new-item-safe').value = '';
+            document.getElementById('new-item-vendor').value = '';
+            document.getElementById('new-item-phone').value = '';
+
+            triggerToast("신규 원재료 등록 완료", `${name}이(가) 실재고 판에 연동 배치되었습니다.`);
+            renderAll();
+        }
+
+        // --- VENDOR DIRECT KAKAO & SMS ORDER CENTER ---
+        function renderDispatchCenter() {
+            const listContainer = document.getElementById('dispatch-center-list');
+            listContainer.innerHTML = '';
+
+            const neededItems = inventoryItems.filter(item => item.current <= item.safe);
+            if (neededItems.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-10 text-slate-400 text-xs">
+                        <i class="fa-solid fa-face-smile text-3xl mb-2 text-emerald-600 block"></i>
+                        현재 모든 원부재료 재고가 안전합니다. 발주가 필요한 품목이 없습니다.
+                    </div>
+                `;
+                return;
+            }
+
+            const vendorGroups = {};
+            neededItems.forEach(item => {
+                const key = item.vendorPhone || '연락처미등록';
+                if (!vendorGroups[key]) {
+                    vendorGroups[key] = {
+                        vendorName: item.vendor || '미지정 거래처',
+                        phone: item.vendorPhone || '',
+                        items: []
+                    };
+                }
+                vendorGroups[key].items.push(item);
+            });
+
+            for (let key in vendorGroups) {
+                const group = vendorGroups[key];
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3";
+                
+                let itemsListHtml = '';
+                let textOrderMsg = `[더 외간 발주 요청]\n안녕하세요, 아래 품목 발주 요청드립니다.\n\n`;
+
+                group.items.forEach((item, idx) => {
+                    const needed = (item.safe - item.current).toFixed(2);
+                    itemsListHtml += `
+                        <div class="flex justify-between items-center text-xs">
+                            <span class="text-slate-700 font-bold">${item.name}</span>
+                            <span class="text-rose-600 font-mono font-bold whitespace-nowrap">+${needed} ${item.unit} 필요</span>
+                        </div>
+                    `;
+                    textOrderMsg += `${idx + 1}. ${item.name}: ${needed} ${item.unit}\n`;
+                });
+
+                textOrderMsg += `\n확인 후 더 외간 매장으로 배송 부탁드립니다. 감사합니다!`;
+
+                const encodedMsg = encodeURIComponent(textOrderMsg);
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start border-b border-slate-200 pb-2">
+                        <div>
+                            <span class="text-[10px] text-emerald-800 font-bold poppins bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 whitespace-nowrap">거래처 및 발주대상</span>
+                            <h5 class="text-xs font-bold text-slate-800 mt-1">${group.vendorName}</h5>
+                        </div>
+                        <span class="text-xs font-mono font-bold text-slate-500">${group.phone ? group.phone.replace(/(\d{3})(\d{4})(\d{4})/, '$1-$2-$3') : '연락처 없음'}</span>
+                    </div>
+                    
+                    <div class="space-y-1.5 py-1">
+                        ${itemsListHtml}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100">
+                        <button onclick="triggerDirectKakaoShare('${key}', \`${textOrderMsg.replace(/`/g, '\\`').replace(/\n/g, '\\n')}\`)" class="bg-[#fee500] hover:bg-[#f3d000] text-slate-900 text-xs py-2 rounded-lg font-extrabold flex items-center justify-center gap-1.5 transition shadow-sm">
+                            <i class="fa-solid fa-comment"></i> 카카오톡 발주
+                        </button>
+                        ${group.phone ? `
+                            <a href="sms:${group.phone}?body=${encodedMsg}" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 transition text-center shadow-sm">
+                                <i class="fa-solid fa-message"></i> 문자(SMS) 발주
+                            </a>
+                        ` : `
+                            <button disabled class="bg-slate-200 text-slate-400 text-xs py-2 rounded-lg font-bold flex items-center justify-center gap-1.5 cursor-not-allowed">
+                                <i class="fa-solid fa-message"></i> 연락처 없음
+                            </button>
+                        `}
+                    </div>
+                `;
+                listContainer.appendChild(card);
+            }
+        }
+
+        function triggerDirectKakaoShare(phone, text) {
+            const dummy = document.createElement('textarea');
+            dummy.value = text;
+            dummy.style.position = 'fixed';
+            document.body.appendChild(dummy);
+            dummy.select();
+            
+            try {
+                document.execCommand('copy');
+                triggerToast(
+                    "발주 텍스트 복사 성공", 
+                    "발주 정보가 클립보드에 완벽 복사되었습니다! 기기 연동을 위해 카카오톡을 엽니다. 대화방에 바로 붙여넣기 하세요."
+                );
+                
+                setTimeout(() => {
+                    window.location.href = "kakaotalk://";
+                }, 100);
+            } catch (err) {
+                triggerToast("복사 에러", "브라우저 제약으로 클립보드 자동복사에 실패했습니다.", false);
+            }
+            document.body.removeChild(dummy);
+        }
+
+        // --- 6. ADMIN SECURITY & LECTURE CONFIGURATIONS (Tab 3) ---
+        function unlockAdminPanel() {
+            const pwInput = document.getElementById('admin-passcode');
+            if (pwInput.value === '0000') {
+                isAdminUnlocked = true;
+                pwInput.value = '';
+                renderAdminPanel();
+                triggerToast("관리자 인증 성공", "결산 분석 리포트 및 레시피 매핑 보드가 성공적으로 잠금 해제되었습니다.");
+            } else {
+                triggerToast("비밀번호 일치하지 않음", "인증 암호가 틀렸습니다. 매장용 전용 암호를 입력하세요.", false);
+            }
+        }
+
+        function lockAdminPanel() {
+            isAdminUnlocked = false;
+            renderAdminPanel();
+            triggerToast("보안 잠금 가동", "관리자 제어 패널이 완벽하게 안전 잠금 상태로 자동 전환되었습니다.");
+        }
+
+        function saveApiKey() {
+            const key = document.getElementById('admin-gemini-key').value.trim();
+            localStorage.setItem('waegan_api_key', key);
+            triggerToast("API 키 저장 완료", "입력하신 Gemini API 키가 브라우저 보안 저장소에 등록되었습니다.");
+            renderAdminPanel();
+        }
+
+        function focusApiKeyInput() {
+            const keyInput = document.getElementById('admin-gemini-key');
+            keyInput.focus();
+            keyInput.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function renderAdminPanel() {
+            const lockView = document.getElementById('admin-lock-view');
+            const unlockedView = document.getElementById('admin-unlocked-view');
+
+            if (isAdminUnlocked) {
+                lockView.classList.add('hidden');
+                unlockedView.classList.remove('hidden');
+
+                document.getElementById('admin-gemini-key').value = localStorage.getItem('waegan_api_key') || '';
+
+                let totalSum = 0;
+                let beverageCounts = {};
+                let brunchCounts = {};
+                let bakeryCounts = {};
+                let dessertCounts = {};
+
+                salesRecords.forEach(r => {
+                    totalSum += r.amount;
+                    if (r.beverage && r.beverage !== '-') beverageCounts[r.beverage] = (beverageCounts[r.beverage] || 0) + 1;
+                    if (r.brunch && r.brunch !== '-') brunchCounts[r.brunch] = (brunchCounts[r.brunch] || 0) + 1;
+                    if (r.bakery && r.bakery !== '-') bakeryCounts[r.bakery] = (bakeryCounts[r.bakery] || 0) + 1;
+                    if (r.dessert && r.dessert !== '-') dessertCounts[r.dessert] = (dessertCounts[r.dessert] || 0) + 1;
+                });
+
+                const totalDays = salesRecords.length;
+                const average = totalDays > 0 ? Math.round(totalSum / totalDays) : 0;
+                const expected = average * 30;
+
+                document.getElementById('summary-total-sales').innerText = `₩${totalSum.toLocaleString()}`;
+                document.getElementById('summary-total-days').innerText = `${totalDays}일 누적`;
+                document.getElementById('summary-average-sales').innerText = `₩${average.toLocaleString()}`;
+                document.getElementById('summary-expected-sales').innerText = `₩${expected.toLocaleString()}`;
+
+                document.getElementById('print-date').innerText = new Date().toLocaleString();
+                document.getElementById('print-days').innerText = `${totalDays}일`;
+                document.getElementById('print-total').innerText = `₩${totalSum.toLocaleString()}`;
+
+                const getTop = (obj) => {
+                    const keys = Object.keys(obj);
+                    if (keys.length === 0) return { name: '기록 없음', count: 0 };
+                    let maxKey = keys[0];
+                    keys.forEach(k => { if (obj[k] > obj[maxKey]) maxKey = k; });
+                    return { name: maxKey, count: obj[maxKey] };
+                };
+
+                const topBev = getTop(beverageCounts);
+                const topBru = getTop(brunchCounts);
+                const topBak = getTop(bakeryCounts);
+                const topDes = getTop(dessertCounts);
+
+                const printBody = document.getElementById('print-table-body');
+                printBody.innerHTML = `
+                    <tr class="border-b border-slate-300">
+                        <td class="p-2 border-r border-slate-300 font-bold bg-slate-50">음료 (Beverage)</td>
+                        <td class="p-2 border-r border-slate-300">${topBev.name}</td>
+                        <td class="p-2 text-center poppins">${topBev.count}회</td>
+                    </tr>
+                    <tr class="border-b border-slate-300">
+                        <td class="p-2 border-r border-slate-300 font-bold bg-slate-50">브런치 (Brunch)</td>
+                        <td class="p-2 border-r border-slate-300">${topBru.name}</td>
+                        <td class="p-2 text-center poppins">${topBru.count}회</td>
+                    </tr>
+                    <tr class="border-b border-slate-300">
+                        <td class="p-2 border-r border-slate-300 font-bold bg-slate-50">베이커리 (Bakery)</td>
+                        <td class="p-2 border-r border-slate-300">${topBak.name}</td>
+                        <td class="p-2 text-center poppins">${topBak.count}회</td>
+                    </tr>
+                    <tr>
+                        <td class="p-2 border-r border-slate-300 font-bold bg-slate-50">디저트 (Dessert)</td>
+                        <td class="p-2 border-r border-slate-300">${topDes.name}</td>
+                        <td class="p-2 text-center poppins">${topDes.count}회</td>
+                    </tr>
+                `;
+
+                renderAdminMenuCrud();
+                renderAdminRecipeMappingPanel();
+
+            } else {
+                lockView.classList.remove('hidden');
+                unlockedView.classList.add('hidden');
+            }
+        }
+
+        // --- DYNAMIC MENU DOCK (Tab 3 Area) ---
+        function renderAdminMenuCrud() {
+            const container = document.getElementById('menu-items-crud-list');
+            container.innerHTML = '';
+
+            const allCats = [
+                { id: 'beverage', title: '음료 (Beverages)' },
+                { id: 'brunch', title: '브런치 (Brunch)' },
+                { id: 'bakery', title: '베이커리 (Bakery)' },
+                { id: 'dessert', title: '디저트 (Dessert)' }
+            ];
+
+            allCats.forEach(cat => {
+                const list = menuCategories[cat.id] || [];
+                const block = document.createElement('div');
+                block.className = "p-3 bg-white space-y-1.5";
+                
+                let listHtml = '';
+                if (list.length === 0) {
+                    listHtml = `<p class="text-[11px] text-slate-400 pl-2">등록된 메뉴가 존재하지 않습니다.</p>`;
+                } else {
+                    list.forEach((menuName, idx) => {
+                        listHtml += `
+                            <div class="flex justify-between items-center text-xs py-1.5 px-2 bg-slate-50 rounded-lg">
+                                <span class="font-bold text-slate-700">${menuName}</span>
+                                <button onclick="deleteMenuItem('${cat.id}', ${idx})" class="text-slate-400 hover:text-rose-600 transition">
+                                    <i class="fa-solid fa-circle-minus"></i>
+                                </button>
+                            </div>
+                        `;
+                    });
+                }
+
+                block.innerHTML = `
+                    <h5 class="text-[11px] font-bold text-emerald-800 tracking-wider">${cat.title}</h5>
+                    <div class="space-y-1 mt-1">${listHtml}</div>
+                `;
+                container.appendChild(block);
+            });
+        }
+
+        function addMenuItem() {
+            const cat = document.getElementById('new-menu-category').value;
+            const name = document.getElementById('new-menu-name').value.trim();
+
+            if (!name) {
+                triggerToast("입력 오류", "메뉴 이름을 정확히 적으세요.", false);
+                return;
+            }
+
+            if (!menuCategories[cat]) menuCategories[cat] = [];
+            
+            if (menuCategories[cat].includes(name)) {
+                triggerToast("중복 오류", "이미 매장에 존재하는 메뉴 이름입니다.", false);
+                return;
+            }
+
+            menuCategories[cat].push(name);
+            localStorage.setItem('waegan_menus', JSON.stringify(menuCategories));
+            document.getElementById('new-menu-name').value = '';
+            
+            triggerToast("신규 메뉴 등록완료", `${name}이(가) 매장 최다판매 선택 목록 및 레시피 보드에 배치되었습니다.`);
+            renderAll();
+        }
+
+        async function deleteMenuItem(catId, index) {
+            const menuName = menuCategories[catId][index];
+            const result = await triggerConfirm("판매 메뉴 삭제", `[${menuName}]을 판매 메뉴에서 완전히 제거하시겠습니까? 연결되어 세팅되었던 소모 레시피 매칭 맵 정보도 일괄 삭제됩니다.`);
+            if (result) {
+                menuCategories[catId].splice(index, 1);
+                localStorage.setItem('waegan_menus', JSON.stringify(menuCategories));
+
+                if (recipes[menuName]) {
+                    delete recipes[menuName];
+                    localStorage.setItem('waegan_recipes', JSON.stringify(recipes));
+                }
+
+                triggerToast("메뉴 삭제 완료", `${menuName}이(가) 리스트에서 퇴출되었습니다.`, false);
+                renderAll();
+            }
+        }
+
+        // --- RECIPE CONFIGURATOR DOCK (Tab 3 Area) ---
+        function renderAdminRecipeMappingPanel() {
+            const menuSelect = document.getElementById('recipe-target-menu');
+            const materialSelect = document.getElementById('recipe-add-material');
+
+            const allMenuNames = [
+                ...menuCategories.beverage,
+                ...menuCategories.brunch,
+                ...menuCategories.bakery,
+                ...menuCategories.dessert
+            ];
+
+            let menuOptionsHtml = '';
+            allMenuNames.forEach(name => {
+                menuOptionsHtml += `<option value="${name}">${name}</option>`;
+            });
+            menuSelect.innerHTML = menuOptionsHtml || '<option value="">- 등록된 메뉴 없음 -</option>';
+
+            let matOptionsHtml = '';
+            inventoryItems.forEach(item => {
+                matOptionsHtml += `<option value="${item.id}">${item.name} (${item.unit})</option>`;
+            });
+            materialSelect.innerHTML = matOptionsHtml || '<option value="">- 등록된 재재료 없음 -</option>';
+
+            if (allMenuNames.length > 0) {
+                const currentSel = menuSelect.value;
+                loadRecipeConfig(currentSel);
+            }
+        }
+
+        function loadRecipeConfig(menuName) {
+            const itemsBox = document.getElementById('recipe-items-list-box');
+            const countLabel = document.getElementById('recipe-ingredient-count-label');
+            itemsBox.innerHTML = '';
+
+            if (!menuName) {
+                countLabel.innerText = "0개 원재료";
+                return;
+            }
+
+            const currentRecipe = recipes[menuName] || [];
+            countLabel.innerText = `${currentRecipe.length}개 원부재료 매칭됨`;
+
+            if (currentRecipe.length === 0) {
+                itemsBox.innerHTML = `<p class="text-slate-400 text-[11px] py-4 text-center">현재 매칭된 재재료 소모 레시피가 없습니다.</p>`;
+                return;
+            }
+
+            currentRecipe.forEach((rec, idx) => {
+                const item = inventoryItems.find(i => i.id === rec.ingredientId);
+                const itemName = item ? item.name : '삭제된 원재료';
+                const itemUnit = item ? item.unit : '';
+                
+                const div = document.createElement('div');
+                div.className = "flex justify-between items-center bg-[#faf7f0] p-2 rounded-lg border border-slate-200 text-[11px]";
+                div.innerHTML = `
+                    <div>
+                        <span class="font-bold text-slate-700">${itemName}</span>
+                        <span class="text-emerald-800 font-mono font-bold ml-1.5">개당 ${rec.qty} ${itemUnit} 소모</span>
+                    </div>
+                    <button onclick="deleteRecipeIngredient('${menuName}', ${idx})" class="text-rose-600 hover:text-rose-800 transition">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                itemsBox.appendChild(div);
+            });
+        }
+
+        function saveRecipeMapping() {
+            const menuName = document.getElementById('recipe-target-menu').value;
+            const ingredientId = parseInt(document.getElementById('recipe-add-material').value);
+            const qty = parseFloat(document.getElementById('recipe-add-qty').value);
+
+            if (!menuName || isNaN(ingredientId) || isNaN(qty) || qty <= 0) {
+                triggerToast("레시피 세팅 에러", "대상 메뉴, 차감 원료 및 정확한 개당 소모량을 숫자로 채워주세요.", false);
+                return;
+            }
+
+            if (!recipes[menuName]) recipes[menuName] = [];
+
+            const existIdx = recipes[menuName].findIndex(r => r.ingredientId === ingredientId);
+            if (existIdx > -1) {
+                recipes[menuName][existIdx].qty = qty;
+            } else {
+                recipes[menuName].push({ ingredientId, qty });
+            }
+
+            localStorage.setItem('waegan_recipes', JSON.stringify(recipes));
+            document.getElementById('recipe-add-qty').value = '';
+            
+            triggerToast("레시피 매핑 저장 성공", `${menuName} 조리 시 해당 식자재가 자동으로 연동 차감되도록 맵에 안착되었습니다.`);
+            loadRecipeConfig(menuName);
+        }
+
+        function deleteRecipeIngredient(menuName, index) {
+            if (recipes[menuName]) {
+                recipes[menuName].splice(index, 1);
+                localStorage.setItem('waegan_recipes', JSON.stringify(recipes));
+                triggerToast("레시피 성분 해제", "선택하신 성분 소모 설정이 성공적으로 삭제 해제되었습니다.", false);
+                loadRecipeConfig(menuName);
+            }
+        }
+
+        // --- DIRECT PRINTER & PDF REPORT AGGREGATOR ---
+        function printReport() {
+            renderAdminPanel();
+            const printArea = document.getElementById('print-report-area');
+            printArea.classList.remove('hidden');
+            setTimeout(() => {
+                window.print();
+                printArea.classList.add('hidden');
+            }, 150);
+        }
+
+        // --- AI NEXT MONTH MARKETING GENERATOR (GEMINI API & SIMULATION ENGINE) ---
+        function runAISimulation() {
+            const aiResult = document.getElementById('ai-marketing-result');
+            aiResult.innerHTML = `
+                <div class="flex items-center gap-2.5 py-4 text-emerald-800 font-bold">
+                    <span class="w-4 h-4 rounded-full border-2 border-emerald-800 border-t-transparent animate-spin"></span>
+                    <span>시뮬레이션 AI가 당월 실시간 결산 통계를 종합 분석 중입니다...</span>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                let totalSum = 0;
+                let beverageCounts = {};
+                let brunchCounts = {};
+                let bakeryCounts = {};
+                let dessertCounts = {};
+
+                salesRecords.forEach(r => {
+                    totalSum += r.amount;
+                    if (r.beverage && r.beverage !== '-') beverageCounts[r.beverage] = (beverageCounts[r.beverage] || 0) + 1;
+                    if (r.brunch && r.brunch !== '-') brunchCounts[r.brunch] = (brunchCounts[r.brunch] || 0) + 1;
+                    if (r.bakery && r.bakery !== '-') bakeryCounts[r.bakery] = (bakeryCounts[r.bakery] || 0) + 1;
+                    if (r.dessert && r.dessert !== '-') dessertCounts[r.dessert] = (dessertCounts[r.dessert] || 0) + 1;
+                });
+
+                const totalDays = salesRecords.length;
+                const average = totalDays > 0 ? Math.round(totalSum / totalDays) : 0;
+                const getTop = (obj) => {
+                    const keys = Object.keys(obj);
+                    if (keys.length === 0) return { name: '기록 없음', count: 0 };
+                    let maxKey = keys[0];
+                    keys.forEach(k => { if (obj[k] > obj[maxKey]) maxKey = k; });
+                    return { name: maxKey, count: obj[maxKey] };
+                };
+
+                const topBev = getTop(beverageCounts).name;
+                const topBru = getTop(brunchCounts).name;
+                const topBak = getTop(bakeryCounts).name;
+                const topDes = getTop(dessertCounts).name;
+
+                aiResult.innerHTML = `
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-2 text-amber-800 font-bold border-b border-amber-100 pb-2">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-600"></i>
+                            <span>[시뮬레이션 AI] 더 외간 통계 기반 마케팅 추천 보고서</span>
+                        </div>
+                        <div class="text-xs md:text-sm text-slate-700 leading-relaxed space-y-3">
+                            <p>📈 <strong>당월 매출 분석 결과:</strong> 이번 달 누적 매출은 <strong>₩${totalSum.toLocaleString()}원</strong>이며, 일평균 <strong>₩${average.toLocaleString()}원</strong>의 매출 패턴을 보이고 있습니다. 현재 카테고리별 주력 킬러 메뉴는 <strong>음료: ${topBev}</strong> 및 <strong>브런치: ${topBru}</strong>로 파악됩니다.</p>
+                            
+                            <p>🎯 <strong>다음 달 킬러 마케팅 제안 (3대 액션 플랜):</strong></p>
+                            <ol class="list-decimal pl-5 space-y-2">
+                                <li><strong>오션뷰 피로도를 깨부수는 '정적인 힐링' 릴스 제작:</strong><br>
+                                    최다 판매 메뉴인 <em>${topBev}</em>을 들고 툇마루에 앉아 서까래 사이로 비치는 햇살을 보는 POV 1인칭 릴스를 기획하세요. 카피 문안으로 <em>"시끄러운 바다뷰 카페 주차 전쟁에 지쳤다면"</em>을 배치하여 조회수를 저장수로 전환시킵니다.
+                                </li>
+                                <li><strong>'한옥 속 의외의 미식' 브런치 세트 바이럴:</strong><br>
+                                    <em>${topBru}</em>의 조리 과정(들기름의 향, 감자의 식감)을 1.5초 컷편집으로 타이트하게 쪼개어 업로드합니다. 한식과 양식의 매력적인 조합을 부각해 테이블 객단가를 높이는 업셀링 카드로 적극 활용해야 합니다.
+                                </li>
+                                <li><strong>지역 기반 단골 락인(당근마켓 공략):</strong><br>
+                                    거제 맘카페 및 로컬 고객들을 타겟으로 하여, 주중 유휴 시간대에 방문 시 베이커리 <em>${topBak}</em> 제품 미니 샘플 증정 쿠폰을 발행하여 재방문율을 45% 이상 끌어올리는 동네생활 마케팅을 전개하십시오.
+                                </li>
+                            </ol>
+                            <div class="bg-amber-50 p-2.5 rounded-lg border border-amber-100 text-[11px] text-amber-800">
+                                💡 본 분석 보고서는 매장의 실제 통계치를 결산하여 구성된 템플릿 제안입니다. 완전한 실시간 생성형 AI 제언을 받아보시려면 구글 API 키를 등록하십시오.
+                            </div>
+                        </div>
+                    </div>
+                `;
+                triggerToast("시뮬레이션 완료", "매장의 매출 통계를 반영한 AI 마케팅 가이드라인이 완성되었습니다.");
+            }, 1000);
+        }
+
+        async function generateAIMarketingProposal() {
+            const aiBox = document.getElementById('ai-marketing-box');
+            const aiResult = document.getElementById('ai-marketing-result');
+            const savedApiKey = localStorage.getItem('waegan_api_key') || '';
+
+            aiBox.classList.remove('hidden');
+
+            if (!savedApiKey) {
+                aiResult.innerHTML = `
+                    <div class="space-y-3 p-2">
+                        <p class="text-amber-800 font-bold text-xs md:text-sm">
+                            <i class="fa-solid fa-circle-exclamation mr-1.5 text-amber-600"></i>
+                            Gemini API 인증 키가 등록되지 않았습니다.
+                        </p>
+                        <p class="text-slate-600 text-xs">
+                            실시간 라이브 AI 분석을 이용하려면 관리자 탭 상단에서 무료 구글 API 키를 발급받아 등록해 주세요. 
+                            <strong>아래 [시뮬레이션 분석] 버튼을 클릭하시면 실제 매출 통계를 반영한 가상 AI 추천 보고서를 즉시 체험하실 수 있습니다.</strong>
+                        </p>
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="runAISimulation()" class="bg-amber-600 hover:bg-amber-700 text-white text-[11px] px-3 py-2.5 rounded-lg font-bold transition">
+                                <i class="fa-solid fa-microchip mr-1"></i> 시뮬레이션 분석 실행
+                            </button>
+                            <button onclick="focusApiKeyInput()" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-[11px] px-3 py-2.5 rounded-lg font-bold transition">
+                                API 키 등록하러 가기
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            aiResult.innerHTML = `
+                <div class="flex items-center gap-2.5 py-4 text-emerald-800 font-bold">
+                    <span class="w-4 h-4 rounded-full border-2 border-emerald-800 border-t-transparent animate-spin"></span>
+                    <span>더 외간 AI 마케터가 당월 결산 통계를 정밀 종합 분석하여 다음 달의 킬러 마케팅 기획안을 수립 중입니다... (약 3~8초 소요)</span>
+                </div>
+            `;
+
+            let totalSum = 0;
+            let beverageCounts = {};
+            let brunchCounts = {};
+            let bakeryCounts = {};
+            let dessertCounts = {};
+
+            salesRecords.forEach(r => {
+                totalSum += r.amount;
+                if (r.beverage && r.beverage !== '-') beverageCounts[r.beverage] = (beverageCounts[r.beverage] || 0) + 1;
+                if (r.brunch && r.brunch !== '-') brunchCounts[r.brunch] = (brunchCounts[r.brunch] || 0) + 1;
+                if (r.bakery && r.bakery !== '-') bakeryCounts[r.bakery] = (bakeryCounts[r.bakery] || 0) + 1;
+                if (r.dessert && r.dessert !== '-') dessertCounts[r.dessert] = (dessertCounts[r.dessert] || 0) + 1;
+            });
+
+            const totalDays = salesRecords.length;
+            const average = totalDays > 0 ? Math.round(totalSum / totalDays) : 0;
+
+            const getTop = (obj) => {
+                const keys = Object.keys(obj);
+                if (keys.length === 0) return { name: '기록 없음', count: 0 };
+                let maxKey = keys[0];
+                keys.forEach(k => { if (obj[k] > obj[maxKey]) maxKey = k; });
+                return { name: maxKey, count: obj[maxKey] };
+            };
+
+            const topBev = getTop(beverageCounts);
+            const topBru = getTop(brunchCounts);
+            const topBak = getTop(bakeryCounts);
+            const topDes = getTop(dessertCounts);
+
+            const systemPrompt = "당신은 전통 한옥 브런치 카페 '더 외간'의 30억 밸류업 프로젝트를 전담하는 일류 마케팅 전략가이자 브랜드 컨설턴트입니다. 당월 매출 데이터와 각 카테고리별 베스트 판매 메뉴 분석을 기반으로, 다음 달에 기획/실행해야 할 날카롭고 매장 자율 주행을 이끄는 '소비자 결핍 해결형(Pain Point)' 숏폼(릴스) 테마 및 오프라인 마케팅 액션 플랜 3가지를 도출해야 합니다. 문체는 정중하고 신뢰감 높은 한국어 비즈니스 톤으로 일목요연하고 설득력 있게 작성해 주십시오.";
+            
+            const userQuery = `[이번 달 매출 통계 데이터]
+- 총매출액: ₩${totalSum.toLocaleString()}원
+- 마감 영업일수: ${totalDays}일
+- 일평균 매출액: ₩${average.toLocaleString()}원
+- 카테고리별 최다 빈도 판매 메뉴:
+  * 음료: ${topBev.name} (${topBev.count}회 최다 마감 기록)
+  * 브런치: ${topBru.name} (${topBru.count}회 최다 기록)
+  * 베이커리: ${topBak.name} (최다 기록)
+  * 디저트: ${topDes.name}
+
+위 통계를 종합 분석하여, 오션뷰 피로도를 이기는 한옥 전용 로컬 마케팅 방향, 숏폼 카피 예시 및 다음 달 실행해야 할 날카로운 실전 팁 3가지를 명확하게 작성해 주세요.`;
+
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${savedApiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            let retryDelay = 1000;
+            for (let i = 0; i < 3; i++) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`API Connection Failed: ${response.status}`);
+                    }
+
+                    const result = await response.json();
+                    const aiText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (aiText) {
+                        const formattedText = aiText
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                            .replace(/^\*\s(.*)/gm, '• $1');
+                        
+                        aiResult.innerHTML = `
+                            <div class="space-y-4">
+                                <div class="flex items-center gap-2 text-emerald-800 font-bold border-b border-emerald-100 pb-2">
+                                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                                    <span>더 외간 AI 마케팅 제안서</span>
+                                </div>
+                                <div class="text-xs md:text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">${formattedText}</div>
+                            </div>
+                        `;
+                        triggerToast("AI 제안 완성", "다음 달 매출 증대를 위한 킬러 마케팅 아이디어가 완성되었습니다!");
+                        return;
+                    } else {
+                        throw new Error("Content payload was empty");
+                    }
+                } catch (err) {
+                    console.warn(`Gemini API connection error on attempt ${i + 1}, retrying...`, err);
+                    if (i === 2) {
+                        aiResult.innerHTML = `
+                            <div class="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs">
+                                <p class="font-bold"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i> AI 연결 또는 키 유효성 지연 발생</p>
+                                <p class="mt-1">구글 AI API 키를 다시 확인하거나, API Studio의 결제 연동 등을 확인해 주세요. 우회 처리를 위해 아래 버튼을 누르면 실시간 시뮬레이션 데이터를 즉각 도출할 수 있습니다.</p>
+                                <button onclick="runAISimulation()" class="mt-2.5 bg-amber-600 hover:bg-amber-700 text-white text-[10px] px-3 py-1.5 rounded font-bold transition">시뮬레이션 모드로 생성</button>
+                            </div>
+                        `;
+                    } else {
+                        await new Promise(res => setTimeout(res, retryDelay));
+                        retryDelay *= 2;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
